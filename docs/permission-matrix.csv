@@ -1,0 +1,20 @@
+module,action,staff,leader,branch_manager,admin,notes
+lead,view_own,yes,yes,yes,yes,
+lead,view_team,no,yes,yes,yes,
+lead,view_branch,no,no,yes,yes,
+lead,create,yes,yes,yes,yes,
+lead,update,own,team,branch,all,
+lead,reassign_tele_lead,no,tele_leader_only,no,yes,Hard rule
+customer_data,export,no,no,no,yes,Hard rule
+customer_data,delete,no,no,no,yes,Hard rule
+invoice,delete,no,no,no,yes,Hard rule
+hoan_khach,request,yes,yes,yes,yes,
+hoan_khach,approve,no,no,yes,yes,Branch manager operational owner
+kpi,view_own,yes,yes,yes,yes,
+kpi,view_team,no,yes,yes,yes,
+kpi,view_branch,no,no,yes,yes,
+revenue,create,yes,yes,yes,yes,
+revenue,view_own,yes,yes,yes,yes,
+revenue,view_team,no,yes,yes,yes,
+revenue,view_branch,no,no,yes,yes,
+audit_log,view,no,no,yes,yes,
