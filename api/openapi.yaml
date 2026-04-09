@@ -1,0 +1,38 @@
+openapi: 3.0.3
+info:
+  title: Shiny Clinic CRM MVP API
+  version: 0.1.0
+paths:
+  /leads:
+    post:
+      summary: Create lead (phone allowed only when qualified)
+  /leads/{leadId}/calls:
+    post:
+      summary: Append tele call log for one call attempt
+  /leads/{leadId}/reassign:
+    post:
+      summary: Reassign tele owner (Tele Leader only)
+  /invoices:
+    post:
+      summary: Create invoice with one seller
+  /payments:
+    post:
+      summary: Record payment (actual collected)
+  /invoices/{invoiceId}/hoan-khach:
+    post:
+      summary: Request hoan khach
+  /hoan-khach/{requestId}/approve:
+    post:
+      summary: Approve hoan khach (Branch Manager only)
+  /reports/kpi/monthly:
+    get:
+      summary: Monthly KPI by scope (self/team/branch/all)
+  /admin/customers/export:
+    post:
+      summary: Export customer data (Admin only)
+  /admin/customers/{customerId}:
+    delete:
+      summary: Delete customer data (Admin only)
+  /admin/invoices/{invoiceId}:
+    delete:
+      summary: Delete invoice (Admin only)

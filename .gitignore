@@ -1,0 +1,7 @@
+# Demo runtime data
+data/*.db
+crm_demo_single.db
+
+# Python cache
+__pycache__/
+*.pyc
