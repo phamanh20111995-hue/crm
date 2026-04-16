@@ -119,6 +119,11 @@ def render_page(q: str, status: str, owner: str, branch: str, date_filter: str) 
             "</tr>"
         )
 
+    total_customers = sum(counts.values())
+    hot_data = counts.get("DATA NÓNG", 0)
+    appointments = counts.get("ĐẶT LỊCH", 0)
+    interacted = counts.get("ĐANG TƯƠNG TÁC ZALO", 0)
+
     return f"""
 <!doctype html>
 <html lang='vi'>
@@ -126,37 +131,180 @@ def render_page(q: str, status: str, owner: str, branch: str, date_filter: str) 
 <meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>
 <title>CRM Demo - Danh sách khách hàng</title>
 <style>
-body {{ font-family: Arial, sans-serif; margin: 16px; background: #f5f7fb; }}
-.header {{ font-size: 24px; font-weight: 700; margin-bottom: 12px; }}
-.filters {{ display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }}
-input, select, button {{ padding: 8px; border-radius: 6px; border: 1px solid #cfd6e0; }}
-.tabs {{ display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }}
-.tab {{ background: #e6ebf5; color: #213f7a; border-radius: 16px; padding: 6px 10px; font-size: 13px; text-decoration: none; }}
-.tab.active {{ background: #1f4ea0; color: white; }}
-.count {{ background: #ff8b00; color: #fff; border-radius: 10px; padding: 0 6px; margin-left: 6px; }}
-table {{ width: 100%; border-collapse: collapse; background: white; }}
-th, td {{ border: 1px solid #e1e6ef; padding: 8px; font-size: 13px; }}
-th {{ background: #eef2f8; text-align: left; }}
+:root {{
+  --bg: #f4f7fc;
+  --card: #ffffff;
+  --text: #15223b;
+  --subtext: #6d7a93;
+  --line: #e6ebf4;
+  --primary: #2e6bff;
+  --primary-soft: #eaf0ff;
+  --accent: #ff8b00;
+  --shadow: 0 8px 24px rgba(21, 34, 59, 0.08);
+}}
+* {{ box-sizing: border-box; }}
+body {{
+  margin: 0;
+  font-family: Inter, Segoe UI, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}}
+.layout {{
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}}
+.topbar {{
+  background: linear-gradient(120deg, #17315f, #274f9b);
+  color: #fff;
+  border-radius: 16px;
+  padding: 18px 22px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}}
+.topbar h1 {{ margin: 0; font-size: 24px; }}
+.topbar p {{ margin: 6px 0 0; color: #d7e3ff; }}
+.stats {{
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}}
+.stat {{
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+}}
+.stat .label {{ font-size: 12px; color: var(--subtext); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .03em; }}
+.stat .value {{ font-size: 24px; font-weight: 700; }}
+.panel {{
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 14px;
+  margin-bottom: 12px;
+}}
+.filters {{
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 10px;
+}}
+input, select, button {{
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #d3dced;
+  background: #fff;
+  color: var(--text);
+}}
+button {{
+  width: auto;
+  min-width: 120px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}}
+.tabs {{
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}}
+.tab {{
+  background: #f2f5fb;
+  color: #31456b;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 13px;
+  text-decoration: none;
+  border: 1px solid #e0e7f5;
+}}
+.tab.active {{
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-color: #cbd9ff;
+  font-weight: 600;
+}}
+.count {{
+  background: var(--accent);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 7px;
+  margin-left: 6px;
+  font-size: 12px;
+}}
+.table-wrap {{
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}}
+table {{
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  min-width: 1150px;
+}}
+th, td {{ border-bottom: 1px solid var(--line); padding: 10px 9px; font-size: 13px; text-align: left; }}
+th {{
+  background: #f7f9ff;
+  color: #3a4c71;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}}
+tr:hover td {{ background: #f9fbff; }}
+.muted {{ color: var(--subtext); font-size: 13px; margin: 0 0 10px; }}
+@media (max-width: 1024px) {{
+  .stats {{ grid-template-columns: repeat(2, minmax(180px, 1fr)); }}
+  .filters {{ grid-template-columns: 1fr; }}
+  button {{ width: 100%; }}
+}}
 </style>
 </head>
 <body>
-<div class='header'>Khách hàng · Danh sách khách hàng (Demo)</div>
-<form method='get' class='filters'>
-<input type='text' name='q' placeholder='Tìm tên, sđt' value='{html.escape(q)}' />
-<select name='owner'>{''.join(owner_options)}</select>
-<select name='branch'>{''.join(branch_options)}</select>
-<select name='date_filter'>
-<option value='all' {'selected' if date_filter == 'all' else ''}>Thời gian: Tất cả</option>
-<option value='today' {'selected' if date_filter == 'today' else ''}>Thời gian: Hôm nay</option>
-</select>
-<input type='hidden' name='status' value='{html.escape(status)}' />
-<button type='submit'>Lọc</button>
-</form>
-<div class='tabs'>{''.join(tabs)}</div>
-<table>
-<thead><tr><th>#</th><th>Tên khách hàng</th><th>Điện thoại</th><th>Địa chỉ</th><th>Mô tả</th><th>Nguồn KH</th><th>Nhóm KH</th><th>Ngày hẹn</th><th>Mối quan hệ</th><th>Người phụ trách</th><th>Người tạo</th><th>Chi nhánh</th><th>Giới tính</th></tr></thead>
-<tbody>{''.join(rows)}</tbody>
-</table>
+<div class='layout'>
+  <div class='topbar'>
+    <h1>CRM Dashboard · Quản lý khách hàng</h1>
+    <p>Giao diện demo theo phong cách dashboard quản trị hiện đại · dữ liệu đồng bộ theo bộ lọc</p>
+  </div>
+
+  <div class='stats'>
+    <div class='stat'><div class='label'>Tổng khách hàng</div><div class='value'>{total_customers}</div></div>
+    <div class='stat'><div class='label'>Data nóng</div><div class='value'>{hot_data}</div></div>
+    <div class='stat'><div class='label'>Đặt lịch</div><div class='value'>{appointments}</div></div>
+    <div class='stat'><div class='label'>Đang tương tác Zalo</div><div class='value'>{interacted}</div></div>
+  </div>
+
+  <div class='panel'>
+    <p class='muted'>Lọc dữ liệu theo từ khóa, người phụ trách, chi nhánh và thời gian.</p>
+    <form method='get' class='filters'>
+      <input type='text' name='q' placeholder='Tìm theo tên hoặc số điện thoại...' value='{html.escape(q)}' />
+      <select name='owner'>{''.join(owner_options)}</select>
+      <select name='branch'>{''.join(branch_options)}</select>
+      <select name='date_filter'>
+      <option value='all' {'selected' if date_filter == 'all' else ''}>Thời gian: Tất cả</option>
+      <option value='today' {'selected' if date_filter == 'today' else ''}>Thời gian: Hôm nay</option>
+      </select>
+      <input type='hidden' name='status' value='{html.escape(status)}' />
+      <button type='submit'>Áp dụng lọc</button>
+    </form>
+  </div>
+
+  <div class='panel'><div class='tabs'>{''.join(tabs)}</div></div>
+
+  <div class='panel table-wrap'>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Tên khách hàng</th><th>Điện thoại</th><th>Địa chỉ</th><th>Mô tả</th><th>Nguồn KH</th><th>Nhóm KH</th><th>Ngày hẹn</th><th>Mối quan hệ</th><th>Người phụ trách</th><th>Người tạo</th><th>Chi nhánh</th><th>Giới tính</th></tr>
+      </thead>
+      <tbody>{''.join(rows)}</tbody>
+    </table>
+  </div>
+</div>
 </body></html>
 """
 
