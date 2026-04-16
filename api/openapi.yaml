@@ -1,0 +1,693 @@
+openapi: 3.0.3
+info:
+  title: Shiny Clinic CRM MVP API
+  version: 0.2.0
+  description: |
+    Lightweight CRM MVP API contract matching backend/mvp_api.py endpoints.
+servers:
+  - url: http://127.0.0.1:8100
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service health
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  service: { type: string }
+                  db: { type: string }
+
+  /auth/login:
+    post:
+      summary: Login and create session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /auth/me:
+    get:
+      summary: Get authenticated user profile
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user:
+                    $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/leads:
+    get:
+      summary: List recent leads
+      responses:
+        "200":
+          description: Leads list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Lead"
+    post:
+      summary: Create lead (phone allowed only when page_qualified=true)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeadRequest"
+      responses:
+        "201":
+          description: Lead created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/leads/{leadId}/calls:
+    post:
+      summary: Append tele call log to a lead
+      parameters:
+        - name: leadId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCallRequest"
+      responses:
+        "201":
+          description: Call log created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "409":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/leads/{leadId}/reassign:
+    post:
+      summary: Reassign tele owner for a lead (Leader or Admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: leadId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_tele_owner_code]
+              properties:
+                new_tele_owner_code: { type: string }
+      responses:
+        "200":
+          description: Lead reassigned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  lead_id: { type: integer }
+                  tele_owner_code: { type: string }
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/invoices:
+    post:
+      summary: Create invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvoiceRequest"
+      responses:
+        "201":
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "409":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/payments:
+    post:
+      summary: Record payment (actual collected)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentRequest"
+      responses:
+        "201":
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/hoan-khach/request:
+    post:
+      summary: Create hoan-khach request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateHoanKhachRequest"
+      responses:
+        "201":
+          description: Request created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: integer }
+                  status: { type: string, enum: [pending] }
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/hoan-khach/approve:
+    post:
+      summary: Approve/reject hoan-khach (Branch Manager or Admin)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveHoanKhachRequest"
+      responses:
+        "200":
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HoanKhachDecisionResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/kpi/monthly:
+    get:
+      summary: Query monthly KPI by scope (self/team/branch/all)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [self, team, branch, all]
+            default: self
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "2026-04"
+      responses:
+        "200":
+          description: KPI list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, scope, month]
+                properties:
+                  scope: { type: string }
+                  month: { type: string }
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/KpiMonthly"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/kpi/monthly/upsert:
+    post:
+      summary: Upsert monthly KPI snapshot (Leader/Branch Manager/Admin)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertKpiRequest"
+      responses:
+        "200":
+          description: Upsert completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/admin/audit-logs:
+    get:
+      summary: List audit logs (Admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Audit log list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, limit]
+                properties:
+                  limit: { type: integer }
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AuditLogItem"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/admin/customers/export:
+    post:
+      summary: Export customer data (Admin only)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Customer export payload
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, count]
+                properties:
+                  count: { type: integer }
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CustomerExportItem"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/admin/customers/{customerId}:
+    delete:
+      summary: Delete customer data (Admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Customer deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  deleted_customer_id: { type: integer }
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/admin/invoices/{invoiceId}:
+    delete:
+      summary: Delete invoice (Admin only, soft delete)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Invoice deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  deleted_invoice_id: { type: integer }
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /api/admin/users/reset-password:
+    post:
+      summary: Reset user password (Admin only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_code, new_password]
+              properties:
+                user_code: { type: string }
+                new_password: { type: string, minLength: 8 }
+      responses:
+        "200":
+          description: Password reset completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  user_code: { type: string }
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Token
+
+  responses:
+    ErrorResponse:
+      description: Standardized API error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            fields:
+              type: array
+              items: { type: string }
+
+    IdResponse:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer }
+
+    UserProfile:
+      type: object
+      properties:
+        user_code: { type: string }
+        full_name: { type: string }
+        role_code: { type: string }
+        branch_code: { type: string, nullable: true }
+        team_code: { type: string, nullable: true }
+        manager_user_code: { type: string, nullable: true }
+
+    LoginRequest:
+      type: object
+      required: [user_code, password]
+      properties:
+        user_code: { type: string }
+        password: { type: string }
+
+    LoginResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string }
+        user:
+          $ref: "#/components/schemas/UserProfile"
+
+    Lead:
+      type: object
+      properties:
+        id: { type: integer }
+        branch_code: { type: string }
+        customer_name: { type: string, nullable: true }
+        customer_phone: { type: string, nullable: true }
+        platform: { type: string }
+        campaign_name: { type: string, nullable: true }
+        service_interest: { type: string, nullable: true }
+        page_qualified: { type: integer }
+        tele_owner_code: { type: string, nullable: true }
+        lead_status: { type: string }
+        created_at: { type: string }
+
+    CreateLeadRequest:
+      type: object
+      required: [branch_code, platform]
+      properties:
+        branch_code: { type: string }
+        customer_name: { type: string }
+        customer_phone: { type: string }
+        platform: { type: string }
+        campaign_name: { type: string }
+        service_interest: { type: string }
+        page_qualified: { type: boolean }
+        page_owner_code: { type: string }
+        tele_owner_code: { type: string }
+        sale_owner_code: { type: string }
+        lead_status: { type: string, default: new }
+
+    CreateCallRequest:
+      type: object
+      required: [call_no, tele_owner_code, call_status, call_result]
+      properties:
+        call_no: { type: integer }
+        tele_owner_code: { type: string }
+        call_status: { type: string }
+        call_result: { type: string }
+        appointment_at: { type: string, nullable: true }
+        appointment_confirm_status: { type: string, nullable: true }
+        next_follow_up_at: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+
+    CreateInvoiceRequest:
+      type: object
+      required: [branch_code, invoice_no, seller_code, sale_result]
+      properties:
+        branch_code: { type: string }
+        lead_id: { type: integer, nullable: true }
+        invoice_no: { type: string }
+        seller_code: { type: string }
+        sale_result: { type: string }
+        actual_revenue: { type: number, format: float }
+        debt_revenue: { type: number, format: float }
+
+    CreatePaymentRequest:
+      type: object
+      required: [branch_code, invoice_id, paid_amount, paid_at]
+      properties:
+        branch_code: { type: string }
+        invoice_id: { type: integer }
+        paid_amount: { type: number, format: float }
+        paid_at: { type: string }
+        method: { type: string, nullable: true }
+        created_by_code: { type: string, nullable: true }
+
+    CreateHoanKhachRequest:
+      type: object
+      required: [invoice_id, requested_by_code, reason_group, reason_detail]
+      properties:
+        invoice_id: { type: integer }
+        requested_by_code: { type: string }
+        reason_group: { type: string }
+        reason_detail: { type: string }
+        evidence_url: { type: string, nullable: true }
+
+    ApproveHoanKhachRequest:
+      type: object
+      required: [request_id, decision]
+      properties:
+        request_id: { type: integer }
+        decision:
+          type: string
+          enum: [approve, reject]
+        decision_note: { type: string, nullable: true }
+
+    HoanKhachDecisionResponse:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: integer }
+        status:
+          type: string
+          enum: [approved, rejected]
+
+    KpiMonthly:
+      type: object
+      properties:
+        month_key: { type: string }
+        user_code: { type: string }
+        branch_code: { type: string }
+        team_code: { type: string, nullable: true }
+        inbox_count: { type: integer }
+        qualified_data_count: { type: integer }
+        tele_data_count: { type: integer }
+        tele_arrived_count: { type: integer }
+        sale_order_count: { type: integer }
+        actual_collected_revenue: { type: number, format: float }
+        debt_revenue: { type: number, format: float }
+        ad_cost: { type: number, format: float }
+        committed_target_revenue: { type: number, format: float }
+
+    UpsertKpiRequest:
+      type: object
+      required: [month_key, user_code, branch_code]
+      properties:
+        month_key: { type: string }
+        user_code: { type: string }
+        branch_code: { type: string }
+        team_code: { type: string, nullable: true }
+        inbox_count: { type: integer }
+        qualified_data_count: { type: integer }
+        tele_data_count: { type: integer }
+        tele_arrived_count: { type: integer }
+        sale_order_count: { type: integer }
+        actual_collected_revenue: { type: number, format: float }
+        debt_revenue: { type: number, format: float }
+        ad_cost: { type: number, format: float }
+        committed_target_revenue: { type: number, format: float }
+
+    AuditLogItem:
+      type: object
+      properties:
+        id: { type: integer }
+        actor_user_code: { type: string }
+        action: { type: string }
+        target_type: { type: string }
+        target_id: { type: string, nullable: true }
+        detail:
+          type: object
+          additionalProperties: true
+        created_at: { type: string }
+
+    CustomerExportItem:
+      type: object
+      properties:
+        id: { type: integer }
+        customer_name: { type: string, nullable: true }
+        customer_phone: { type: string, nullable: true }
+        branch_code: { type: string }
+        platform: { type: string }
+        created_at: { type: string }
