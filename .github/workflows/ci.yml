@@ -1,0 +1,23 @@
+name: CRM MVP CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile check
+        run: python -m py_compile backend/mvp_api.py tests/test_mvp_api.py
+
+      - name: Run integration tests
+        run: python -m unittest tests/test_mvp_api.py
