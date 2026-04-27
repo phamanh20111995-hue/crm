@@ -4,6 +4,7 @@ import json
 import secrets
 import sqlite3
 import hashlib
+import hmac
 import os
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -29,17 +30,44 @@ def now_iso() -> str:
 
 
 def hash_password(raw_password: str) -> str:
-    digest = hashlib.pbkdf2_hmac("sha256", raw_password.encode("utf-8"), b"crm_mvp_salt_v1", 120_000).hex()
-    return f"pbkdf2_sha256${digest}"
+    iterations = 120_000
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", raw_password.encode("utf-8"), salt.encode("utf-8"), iterations).hex()
+    return f"pbkdf2_sha256${iterations}${salt}${digest}"
 
 
 def verify_password(raw_password: str, stored_password: str) -> bool:
     if not stored_password:
         return False
     if stored_password.startswith("pbkdf2_sha256$"):
-        return hash_password(raw_password) == stored_password
+        parts = stored_password.split("$")
+        # New format: pbkdf2_sha256$120000$salt_hex$digest_hex
+        if len(parts) == 4:
+            _, iter_str, salt, expected_digest = parts
+            try:
+                iterations = int(iter_str)
+            except ValueError:
+                return False
+            digest = hashlib.pbkdf2_hmac(
+                "sha256",
+                raw_password.encode("utf-8"),
+                salt.encode("utf-8"),
+                iterations,
+            ).hex()
+            return hmac.compare_digest(digest, expected_digest)
+        # Legacy format kept for backward compatibility: pbkdf2_sha256$digest_hex
+        if len(parts) == 2:
+            legacy_digest = hashlib.pbkdf2_hmac(
+                "sha256", raw_password.encode("utf-8"), b"crm_mvp_salt_v1", 120_000
+            ).hex()
+            return hmac.compare_digest(legacy_digest, parts[1])
+        return False
     # Backward compatibility for demo DBs seeded with plaintext previously.
     return raw_password == stored_password
+
+
+def is_default_password(stored_password: str) -> bool:
+    return verify_password("123456", stored_password)
 
 
 def parse_iso_ts(value: str | None) -> datetime | None:
@@ -102,11 +130,11 @@ def run_production_preflight(conn: sqlite3.Connection) -> None:
     if LOGIN_RATE_LIMIT_MAX_ATTEMPTS > 10:
         errors.append("CRM_LOGIN_LIMIT_MAX_ATTEMPTS must be <= 10 in production.")
 
-    default_pw_hash = hash_password("123456")
-    weak_users = conn.execute(
-        "SELECT user_code FROM users WHERE active = 1 AND password = ?",
-        (default_pw_hash,),
-    ).fetchall()
+    weak_users = [
+        (row[0],)
+        for row in conn.execute("SELECT user_code, password FROM users WHERE active = 1").fetchall()
+        if is_default_password(row[1])
+    ]
     if weak_users:
         users = ", ".join([r[0] for r in weak_users])
         errors.append(f"Default password still active for users: {users}. Rotate passwords before production.")
@@ -259,7 +287,9 @@ def ensure_db() -> None:
             # Migrate old plaintext passwords to hashed representation.
             rows = conn.execute("SELECT id, password FROM users").fetchall()
             for row_id, pw in rows:
-                if pw and not str(pw).startswith("pbkdf2_sha256$"):
+                if not pw:
+                    continue
+                if not str(pw).startswith("pbkdf2_sha256$"):
                     conn.execute("UPDATE users SET password = ? WHERE id = ?", (hash_password(str(pw)), row_id))
         run_production_preflight(conn)
 
@@ -285,7 +315,7 @@ def send_api_error(
     code: str,
     message: str,
     fields: list[str] | None = None,
-) -> None:
+    ) -> None:
     payload: dict = {"error": {"code": code, "message": message}}
     if fields:
         payload["error"]["fields"] = fields
@@ -498,7 +528,7 @@ def render_login(error: str = "") -> str:
           <p class='sub'>Đăng nhập để quản lý lead, doanh thu, KPI và vận hành chi nhánh.</p>
           {err}
           <form method='post' action='/app/login'>
-                <label>User code</label>
+            <label>User code</label>
             <input name='user_code' autocomplete='username' />
             <label>Password</label>
             <input name='password' type='password' autocomplete='current-password' />
@@ -602,7 +632,7 @@ def render_app(
             color: var(--text);
             font-family: Inter, Segoe UI, Arial, sans-serif;
           }}
-          .app {{
+              .app {{
             display: grid;
             grid-template-columns: 248px 1fr;
             min-height: 100vh;
@@ -919,7 +949,7 @@ def render_app(
                   <div><label>Evidence URL</label><input name='evidence_url'></div>
                   <button>Tạo Request</button>
                 </form>
-              </div>
+                  </div>
 
               <div class='card'>
                 <h3>Duyệt Hoàn khách (Branch Manager/Admin)</h3>
@@ -998,7 +1028,7 @@ class Handler(BaseHTTPRequestHandler):
                 "",
                 set_cookie=build_session_cookie("", max_age=0),
                 location="/app/login",
-                            )
+            )
         if parsed.path == "/app/leads":
             token = get_cookie_token(self)
             user = get_user_by_token_value(token)
@@ -1236,7 +1266,7 @@ class Handler(BaseHTTPRequestHandler):
             token = get_cookie_token(self)
             user = get_user_by_token_value(token)
             if not user:
-                return send_html(self, 302, "", location="/app/login")
+                                return send_html(self, 302, "", location="/app/login")
             form = parse_form(self)
             if not form.get("lead_id") or not form.get("call_no"):
                 return send_html(self, 200, "<p>Thiếu lead_id hoặc call_no. <a href='/app/leads'>Quay lại</a></p>")
@@ -1466,7 +1496,8 @@ class Handler(BaseHTTPRequestHandler):
                         data.get("sale_owner_code"),
                         data.get("lead_status", "new"),
                         ts,
-                    )
+                        ts,
+                    ),
                 )
                 lead_id = cur.lastrowid
             return send_json(self, 201, {"id": lead_id})
@@ -1497,7 +1528,7 @@ class Handler(BaseHTTPRequestHandler):
                     self,
                     400,
                     "next_follow_up_required_for_hen_goi_lai",
-                                        "next_follow_up_at is required when call_result is 'Hẹn gọi lại'.",
+                    "next_follow_up_at is required when call_result is 'Hẹn gọi lại'.",
                 )
 
             with sqlite3.connect(DB_PATH) as conn:
@@ -1552,7 +1583,7 @@ class Handler(BaseHTTPRequestHandler):
                 actor_user_code=user["user_code"],
                 action="lead_reassign",
                 target_type="lead",
-                target_id=str(lead_id),
+                            target_id=str(lead_id),
                 detail={"new_tele_owner_code": new_tele_owner_code},
             )
             return send_json(self, 200, {"ok": True, "lead_id": lead_id, "tele_owner_code": new_tele_owner_code})
