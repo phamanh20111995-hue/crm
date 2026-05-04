@@ -742,7 +742,7 @@ def render_layout(user: dict, title: str, subtitle: str, active: str, content: s
             overflow: hidden;
           }}
           .table-card h3 {{ margin: 0; padding: 14px 14px 4px; font-size: 15px; }}
-          .table-wrap {{ overflow: auto; padding: 0 14px 14px; }
+          .table-wrap {{ overflow: auto; padding: 0 14px 14px; }}
           table {{ width: 100%; border-collapse: collapse; min-width: 920px; }}
           th, td {{
             border-bottom: 1px solid var(--line);
