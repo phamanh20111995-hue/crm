@@ -350,7 +350,7 @@ def get_user_by_token(handler: BaseHTTPRequestHandler) -> dict | None:
     auth_header = handler.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         return None
-            token = auth_header.replace("Bearer ", "", 1).strip()
+    token = auth_header.replace("Bearer ", "", 1).strip()
     if not token:
         return None
 
