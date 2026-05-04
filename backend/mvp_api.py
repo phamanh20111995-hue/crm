@@ -350,6 +350,7 @@ def get_user_by_token(handler: BaseHTTPRequestHandler) -> dict | None:
     auth_header = handler.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         return None
+
     token = auth_header.replace("Bearer ", "", 1).strip()
     if not token:
         return None
@@ -367,12 +368,14 @@ def get_user_by_token(handler: BaseHTTPRequestHandler) -> dict | None:
         ).fetchone()
     if not row:
         return None
-    user = dict(row)
+
+    user = _dict(row)
     created_at = parse_iso_ts(user.get("session_created_at"))
     if not created_at or datetime.utcnow() - created_at > timedelta(hours=SESSION_TTL_HOURS):
         with sqlite3.connect(DB_PATH) as conn:
             conn.execute("DELETE FROM auth_sessions WHERE token = ?", (token,))
         return None
+
     user.pop("session_created_at", None)
     return user
 
