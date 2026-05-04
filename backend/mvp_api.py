@@ -315,7 +315,7 @@ def send_api_error(
     code: str,
     message: str,
     fields: list[str] | None = None,
-    ) -> None:
+) -> None:
     payload: dict = {"error": {"code": code, "message": message}}
     if fields:
         payload["error"]["fields"] = fields
@@ -350,8 +350,7 @@ def get_user_by_token(handler: BaseHTTPRequestHandler) -> dict | None:
     auth_header = handler.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         return None
-
-    token = auth_header.replace("Bearer ", "", 1).strip()
+            token = auth_header.replace("Bearer ", "", 1).strip()
     if not token:
         return None
 
@@ -541,12 +540,247 @@ def render_login(error: str = "") -> str:
     """
 
 
-def render_app(
+def render_sidebar(active: str) -> str:
+    groups = [
+        ("Lead Pipeline", "/app/leads", "leads"),
+        ("Invoices", "/app/invoices", "invoices"),
+        ("KPI Monthly", "/app/kpi", "kpi"),
+        ("Hoàn khách", "/app/hoan-khach", "hoan-khach"),
+    ]
+    links = "".join(
+        [
+            f"<a class='{'active' if active == key else ''}' href='{href}'>{label}</a>"
+            for label, href, key in groups
+        ]
+    )
+    return f"""
+      <aside class='sidebar'>
+        <div class='brand'>
+          <h2>CRM Pro</h2>
+          <p>Vận hành · Doanh thu · KPI</p>
+        </div>
+        <nav class='menu'>
+          {links}
+        </nav>
+        <a class='logout' href='/app/logout'>Đăng xuất</a>
+      </aside>
+    """
+
+
+def render_layout(user: dict, title: str, subtitle: str, active: str, content: str) -> str:
+    return f"""
+    <html>
+      <head>
+        <meta charset='utf-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1'>
+        <title>{title}</title>
+        <style>
+          :root {{
+            --bg: #f5f7fb;
+            --card: #ffffff;
+            --line: #e6ebf4;
+            --text: #1b2b4a;
+            --muted: #6e7e97;
+            --primary: #2f6fff;
+            --primary-soft: #ecf2ff;
+            --ok: #15b37d;
+            --warn: #ff9a1a;
+            --danger: #f25c54;
+          }}
+          * {{ box-sizing: border-box; }}
+          body {{
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, Segoe UI, Arial, sans-serif;
+          }}
+          .app {{
+            display: grid;
+            grid-template-columns: 248px 1fr;
+            min-height: 100vh;
+          }}
+          .sidebar {{
+            background: #fff;
+            border-right: 1px solid var(--line);
+            padding: 18px 14px;
+          }}
+          .brand {{
+            border-radius: 12px;
+            padding: 12px;
+            color: #fff;
+            background: linear-gradient(130deg, #18356c, #2f6fff);
+            margin-bottom: 16px;
+          }}
+          .brand h2 {{ margin: 0; font-size: 18px; }}
+          .brand p {{ margin: 6px 0 0; font-size: 12px; color: #dbe7ff; }}
+          .menu a {{
+            display: block;
+            text-decoration: none;
+            color: var(--text);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            border: 1px solid transparent;
+          }}
+                    .menu a.active {{
+            color: var(--primary);
+            background: var(--primary-soft);
+            border-color: #d5e3ff;
+            font-weight: 700;
+          }}
+          .logout {{
+            margin-top: 14px;
+            display: inline-block;
+            text-decoration: none;
+            color: #d42f2f;
+            border: 1px solid #ffd2d2;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+          }}
+          .main {{
+            padding: 24px;
+            max-width: 1400px;
+          }}
+          .header {{
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            gap: 16px;
+          }}
+          .header h1 {{ margin: 0; font-size: 26px; }}
+          .meta {{ color: var(--muted); font-size: 13px; margin-top: 6px; }}
+          .subtitle {{ color: var(--muted); margin-top: 6px; font-size: 14px; }}
+          .card {{
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: 0 8px 18px rgba(26, 45, 84, 0.05);
+          }}
+          .actions {{
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+          }}
+          .actions .card {{
+            min-width: 160px;
+            margin: 0;
+          }}
+          .status-tab {{
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 9px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            min-width: 120px;
+          }}
+          .status-tab b {{
+            padding: 2px 7px;
+            border-radius: 999px;
+            color: #fff;
+            background: var(--warn);
+            font-size: 11px;
+          }}
+          .status-tab.active {{
+            border-color: #c8d9ff;
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-weight: 600;
+          }}
+          .btn {{
+            border: none;
+            border-radius: 10px;
+            background: var(--primary);
+            color: #fff;
+            font-weight: 700;
+            padding: 10px 14px;
+            text-decoration: none;
+            display: inline-block;
+            cursor: pointer;
+          }}
+          .btn.secondary {{
+            background: #fff;
+            color: var(--text);
+            border: 1px solid var(--line);
+            font-weight: 600;
+          }}
+          label {{
+            display: block;
+            margin-bottom: 4px;
+            color: var(--muted);
+            font-size: 12px;
+          }}
+          input, select, button {{
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 9px 10px;
+            font-size: 13px;
+            background: #fff;
+          }}
+          form.grid {{
+            display: grid;
+            grid-template-columns: repeat(4, minmax(120px, 1fr));
+            gap: 10px;
+            align-items: end;
+          }}
+          .table-card {{
+            margin-top: 12px;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            box-shadow: 0 8px 18px rgba(26, 45, 84, 0.05);
+            overflow: hidden;
+          }}
+          .table-card h3 {{ margin: 0; padding: 14px 14px 4px; font-size: 15px; }}
+          .table-wrap {{ overflow: auto; padding: 0 14px 14px; }
+          table {{ width: 100%; border-collapse: collapse; min-width: 920px; }}
+          th, td {{
+            border-bottom: 1px solid var(--line);
+            padding: 11px 10px;
+            font-size: 13px;
+            text-align: left;
+            white-space: nowrap;
+          }}
+          th {{ background: #f8fbff; color: #475d80; }}
+          @media (max-width: 1220px) {{
+            .app {{ grid-template-columns: 1fr; }}
+            .sidebar {{ border-right: 0; border-bottom: 1px solid var(--line); }}
+            .main {{ padding: 16px; }}
+            form.grid {{ grid-template-columns: 1fr 1fr; }}
+          }}
+        </style>
+      </head>
+      <body>
+        <div class='app'>
+          {render_sidebar(active)}
+          <main class='main'>
+            <div class='header'>
+              <div>
+                <h1>{title}</h1>
+                <div class='meta'>Xin chào <b>{user['full_name']}</b> ({user['role_code']}) · Chi nhánh: {user.get('branch_code') or '-'}</div>
+                <div class='subtitle'>{subtitle}</div>
+              </div>
+            </div>
+            {content}
+          </main>
+        </div>
+      </body>
+    </html>
+    """
+
+
+def render_leads_page(
     user: dict,
     leads: list[sqlite3.Row],
-    invoices: list[sqlite3.Row],
     kpis: list[sqlite3.Row],
-    hoan_requests: list[sqlite3.Row],
     kpi_scope: str,
     kpi_month: str,
 ) -> str:
@@ -579,6 +813,94 @@ def render_app(
             for r in leads
         ]
     )
+    kpi_data = sum(int(r["tele_data_count"] or 0) for r in kpis)
+    kpi_arrived = sum(int(r["tele_arrived_count"] or 0) for r in kpis)
+    kpi_revenue = sum(float(r["actual_collected_revenue"] or 0) for r in kpis)
+    kpi_cards = (
+        f"<section class='actions'>"
+        f"<div class='card'><label>Data Tele</label><div><b>{kpi_data}</b></div></div>"
+        f"<div class='card'><label>Đã đến</label><div><b>{kpi_arrived}</b></div></div>"
+        f"<div class='card'><label>Doanh thu thực</label><div><b>{kpi_revenue:.0f}</b></div></div>"
+        "</section>"
+    )
+    content = f"""
+      <section class='actions'>
+        <a class='btn' href='/app/leads/new'>+ Thêm mới</a>
+        <a class='btn secondary' href='/app/calls'>Ghi Call Log</a>
+        <a class='btn secondary' href='/app/invoices'>Invoices & Payments</a>
+      </section>
+      <section class='card'>
+        <form class='grid' method='get' action='/app/leads'>
+          <div>
+            <label>Scope KPI</label>
+            <select name='kpi_scope'>
+              <option value='self' {'selected' if kpi_scope=='self' else ''}>self</option>
+              <option value='team' {'selected' if kpi_scope=='team' else ''}>team</option>
+              <option value='branch' {'selected' if kpi_scope=='branch' else ''}>branch</option>
+              <option value='all' {'selected' if kpi_scope=='all' else ''}>all</option>
+            </select>
+          </div>
+          <div>
+            <label>Tháng KPI</label>
+            <input name='kpi_month' value='{kpi_month}'>
+          </div>
+          <button class='btn'>Lọc</button>
+        </form>
+      </section>
+      <section class='actions'>{tabs_html}</section>
+      {kpi_cards}
+      <section class='table-card'>
+        <h3>Danh sách Lead</h3>
+        <div class='table-wrap'>
+          <table>
+            <tr><th>ID</th><th>Tên KH</th><th>SĐT</th><th>Platform</th><th>Campaign</th><th>Dịch vụ</th><th>Status</th></tr>
+            {rows}
+          </table>
+        </div>
+      </section>
+    """
+    return render_layout(
+        user=user,
+        title="Lead Pipeline",
+        subtitle="Màn hình quản lý lead tập trung: lọc, theo dõi trạng thái và theo dõi KPI nhanh.",
+        active="leads",
+        content=content,
+    )
+    def render_lead_create_page(user: dict) -> str:
+    content = f"""
+      <section class='card'>
+        <h3>Tạo Lead mới</h3>
+        <form class='grid' method='post' action='/app/leads/create'>
+          <div><label>Branch</label><input name='branch_code' value='{user.get('branch_code') or 'HN'}'></div>
+          <div><label>Platform</label><input name='platform' value='Facebook'></div>
+          <div><label>Phone</label><input name='customer_phone'></div>
+          <div><label>Qualified</label><select name='page_qualified'><option value='0'>0</option><option value='1'>1</option></select></div>
+          <button class='btn'>Tạo Lead</button>
+        </form>
+      </section>
+    """
+    return render_layout(user, "Tạo Lead", "Tạo lead mới cho pipeline.", "leads", content)
+
+
+def render_calls_page(user: dict) -> str:
+    content = """
+      <section class='card'>
+        <h3>Ghi Call Log (Tele)</h3>
+        <form class='grid' method='post' action='/app/calls/create'>
+          <div><label>Lead ID</label><input name='lead_id'></div>
+          <div><label>Lần gọi</label><input name='call_no' value='1'></div>
+          <div><label>Tele</label><input name='tele_owner_code' value='tele01'></div>
+          <div><label>Status</label><input name='call_status' value='Đã gọi'></div>
+          <div><label>Result</label><input name='call_result' value='Đặt lịch'></div>
+          <div><label>Appointment</label><input name='appointment_at' placeholder='2026-04-10T10:00:00'></div>
+          <button class='btn'>Ghi Log</button>
+        </form>
+      </section>
+    """
+    return render_layout(user, "Tele Call Log", "Module ghi nhận lịch sử cuộc gọi tele.", "leads", content)
+
+
+def render_invoices_page(user: dict, invoices: list[sqlite3.Row]) -> str:
     invoice_rows = "".join(
         [
             "<tr>"
@@ -588,6 +910,45 @@ def render_app(
             for r in invoices
         ]
     )
+    content = f"""
+      <section class='card'>
+        <h3>Tạo Invoice</h3>
+        <form class='grid' method='post' action='/app/invoices/create'>
+          <div><label>Branch</label><input name='branch_code' value='{user.get('branch_code') or 'HN'}'></div>
+          <div><label>Lead ID</label><input name='lead_id'></div>
+          <div><label>Invoice No</label><input name='invoice_no' placeholder='INV-0001'></div>
+          <div><label>Seller</label><input name='seller_code' value='tele01'></div>
+          <div><label>Kết quả TV</label><input name='sale_result' value='Đã mua'></div>
+          <div><label>DT thực</label><input name='actual_revenue' value='0'></div>
+          <div><label>DT nợ</label><input name='debt_revenue' value='0'></div>
+          <button class='btn'>Tạo Invoice</button>
+        </form>
+      </section>
+      <section class='card'>
+        <h3>Tạo Payment</h3>
+        <form class='grid' method='post' action='/app/payments/create'>
+          <div><label>Branch</label><input name='branch_code' value='{user.get('branch_code') or 'HN'}'></div>
+          <div><label>Invoice ID</label><input name='invoice_id'></div>
+          <div><label>Paid Amount</label><input name='paid_amount'></div>
+          <div><label>Paid At</label><input name='paid_at' placeholder='2026-04-10T10:00:00'></div>
+          <div><label>Method</label><input name='method' value='Tiền mặt'></div>
+          <button class='btn'>Tạo Payment</button>
+        </form>
+      </section>
+      <section class='table-card'>
+        <h3>Danh sách Invoice</h3>
+        <div class='table-wrap'>
+          <table>
+            <tr><th>ID</th><th>Invoice No</th><th>Seller</th><th>Kết quả TV</th><th>DT thực</th><th>DT nợ</th></tr>
+            {invoice_rows}
+          </table>
+        </div>
+      </section>
+    """
+    return render_layout(user, "Invoices", "Quản lý hóa đơn và thanh toán.", "invoices", content)
+
+
+def render_kpi_page(user: dict, kpis: list[sqlite3.Row], scope: str, month: str) -> str:
     kpi_rows = "".join(
         [
             "<tr>"
@@ -597,6 +958,36 @@ def render_app(
             for r in kpis
         ]
     )
+    content = f"""
+      <section class='card'>
+        <form class='grid' method='get' action='/app/kpi'>
+          <div>
+            <label>Scope</label>
+            <select name='kpi_scope'>
+              <option value='self' {'selected' if scope=='self' else ''}>self</option>
+              <option value='team' {'selected' if scope=='team' else ''}>team</option>
+              <option value='branch' {'selected' if scope=='branch' else ''}>branch</option>
+              <option value='all' {'selected' if scope=='all' else ''}>all</option>
+            </select>
+          </div>
+          <div><label>Tháng</label><input name='kpi_month' value='{month}'></div>
+          <button class='btn'>Lọc KPI</button>
+        </form>
+      </section>
+      <section class='table-card'>
+        <h3>KPI Monthly</h3>
+        <div class='table-wrap'>
+          <table>
+            <tr><th>Month</th><th>User</th><th>Team</th><th>Data</th><th>Arrived</th><th>Actual Revenue</th></tr>
+            {kpi_rows}
+          </table>
+        </div>
+      </section>
+    """
+    return render_layout(user, "KPI Monthly", "Theo dõi KPI theo scope và theo tháng.", "kpi", content)
+
+
+def render_hoan_khach_page(user: dict, hoan_requests: list[sqlite3.Row]) -> str:
     hoan_rows = "".join(
         [
             "<tr>"
@@ -606,406 +997,39 @@ def render_app(
             for r in hoan_requests
         ]
     )
-    return f"""
-    <html>
-      <head>
-        <meta charset='utf-8'>
-        <meta name='viewport' content='width=device-width, initial-scale=1'>
-        <title>CRM MVP App</title>
-        <style>
-          :root {{
-            --bg: #f5f7fb;
-            --card: #ffffff;
-            --line: #e6ebf4;
-            --text: #1b2b4a;
-            --muted: #6e7e97;
-            --primary: #2f6fff;
-            --primary-soft: #ecf2ff;
-            --ok: #15b37d;
-            --warn: #ff9a1a;
-            --danger: #f25c54;
-          }}
-          * {{ box-sizing: border-box; }}
-          body {{
-            margin: 0;
-            background: var(--bg);
-            color: var(--text);
-            font-family: Inter, Segoe UI, Arial, sans-serif;
-          }}
-              .app {{
-            display: grid;
-            grid-template-columns: 248px 1fr;
-            min-height: 100vh;
-          }}
-          .sidebar {{
-            background: #fff;
-            border-right: 1px solid var(--line);
-            padding: 18px 14px;
-          }}
-          .brand {{
-            border-radius: 12px;
-            padding: 12px;
-            color: #fff;
-            background: linear-gradient(130deg, #18356c, #2f6fff);
-            margin-bottom: 16px;
-          }}
-          .brand h2 {{
-            margin: 0;
-            font-size: 18px;
-          }}
-          .brand p {{
-            margin: 6px 0 0;
-            font-size: 12px;
-            color: #dbe7ff;
-          }}
-          .menu a {{
-            display: block;
-            text-decoration: none;
-            color: var(--text);
-            border-radius: 10px;
-            padding: 9px 10px;
-            margin-bottom: 6px;
-            font-size: 13px;
-          }}
-          .menu a.active {{
-            color: var(--primary);
-            background: var(--primary-soft);
-            font-weight: 600;
-          }}
-          .logout {{
-            margin-top: 14px;
-            display: inline-block;
-            text-decoration: none;
-            color: #d42f2f;
-            border: 1px solid #ffd2d2;
-            border-radius: 8px;
-            padding: 6px 10px;
-            font-size: 12px;
-          }}
-          .main {{
-            padding: 18px;
-          }}
-          .header {{
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px;
-          }}
-          .header h1 {{
-            margin: 0;
-            font-size: 22px;
-          }}
-          .meta {{
-            color: var(--muted);
-            font-size: 13px;
-          }}
-          .new-btn {{
-            border: none;
-            border-radius: 10px;
-            background: var(--primary);
-            color: #fff;
-            font-weight: 700;
-            padding: 10px 14px;
-            text-decoration: none;
-            box-shadow: 0 8px 16px rgba(47, 111, 255, 0.25);
-          }}
-          .filter-bar {{
-            background: var(--card);
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 10px;
-            margin-bottom: 10px;
-          }}
-          .filter-bar form {{
-            display: grid;
-            grid-template-columns: 140px 120px auto;
-            gap: 8px;
-            align-items: end;
-          }}
-          .status-tabs {{
-            display: grid;
-            grid-template-columns: repeat(6, minmax(110px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
-          }}
-          .status-tab {{
-            background: #fff;
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 9px 10px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 12px;
-          }}
-          .status-tab b {{
-            padding: 2px 7px;
-            border-radius: 999px;
-            color: #fff;
-            background: var(--warn);
-            font-size: 11px;
-          }}
-          .status-tab.active {{
-            border-color: #c8d9ff;
-            background: var(--primary-soft);
-            color: var(--primary);
-            font-weight: 600;
-          }}
-          .status-tab:nth-child(3) b {{ background: var(--ok); }}
-          .status-tab:nth-child(5) b {{ background: var(--primary); }}
-          .status-tab:nth-child(6) b {{ background: var(--danger); }}
-          .panel-grid {{
-            display: grid;
-            grid-template-columns: repeat(2, minmax(350px, 1fr));
-            gap: 10px;
-          }}
-          .card {{
-            background: #fff;
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 11px;
-            box-shadow: 0 8px 18px rgba(26, 45, 84, 0.05);
-          }}
-          .card h3 {{
-            margin: 0 0 10px;
-            font-size: 14px;
-          }}
-          label {{
-            display: block;
-            margin-bottom: 3px;
-            color: var(--muted);
-            font-size: 11px;
-          }}
-          .card form {{
-            display: grid;
-            grid-template-columns: repeat(4, minmax(100px, 1fr));
-            gap: 8px;
-            align-items: end;
-          }}
-          .card form.wide {{
-            grid-template-columns: repeat(5, minmax(100px, 1fr));
-          }}
-          input, select, button {{
-            width: 100%;
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            padding: 8px 9px;
-            font-size: 12px;
-            background: #fff;
-          }}
-          button {{
-            border: none;
-            background: var(--primary);
-            color: #fff;
-            font-weight: 600;
-            cursor: pointer;
-          }}
-          .table-card {{
-            margin-top: 10px;
-            background: #fff;
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            box-shadow: 0 8px 18px rgba(26, 45, 84, 0.05);
-            overflow: hidden;
-          }}
-          .table-card h3 {{
-            margin: 0;
-            padding: 12px 12px 4px;
-            font-size: 14px;
-          }}
-          .table-wrap {{
-            overflow: auto;
-            padding: 0 12px 12px;
-          }}
-          table {{
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 980px;
-          }}
-          th, td {{
-            border-bottom: 1px solid var(--line);
-            padding: 11px 10px;
-            font-size: 13px;
-            text-align: left;
-            white-space: nowrap;
-          }}
-          th {{
-            background: #f8fbff;
-            color: #475d80;
-          }}
-          @media (max-width: 1220px) {{
-            .app {{ grid-template-columns: 1fr; }}
-            .sidebar {{ border-right: 0; border-bottom: 1px solid var(--line); }}
-            .status-tabs {{ grid-template-columns: repeat(3, minmax(120px, 1fr)); }}
-            .panel-grid {{ grid-template-columns: 1fr; }}
-            .card form, .card form.wide, .filter-bar form {{ grid-template-columns: 1fr 1fr; }}
-          }}
-        </style>
-      </head>
-      <body>
-        <div class='app'>
-          <aside class='sidebar'>
-            <div class='brand'>
-              <h2>CRM Pro</h2>
-              <p>Vận hành · Doanh thu · KPI</p>
-            </div>
-            <nav class='menu'>
-              <a class='active' href='/app/leads'>Lead Pipeline</a>
-              <a href='#invoices'>Invoices</a>
-              <a href='#kpi'>KPI Monthly</a>
-              <a href='#hoan-khach'>Hoàn khách</a>
-            </nav>
-            <a class='logout' href='/app/logout'>Đăng xuất</a>
-          </aside>
-          <main class='main'>
-            <div class='header'>
-              <div>
-                <h1>CRM Quản Trị Vận Hành</h1>
-                <div class='meta'>Xin chào <b>{user['full_name']}</b> ({user['role_code']}) · Chi nhánh: {user.get('branch_code') or '-'}</div>
-              </div>
-              <a class='new-btn' href='#create-lead'>+ Thêm mới</a>
-            </div>
-
-            <section class='filter-bar'>
-              <form method='get' action='/app/leads'>
-                <div>
-                  <label>Scope</label>
-                  <select name='kpi_scope'>
-                    <option value='self' {'selected' if kpi_scope=='self' else ''}>self</option>
-                    <option value='team' {'selected' if kpi_scope=='team' else ''}>team</option>
-                    <option value='branch' {'selected' if kpi_scope=='branch' else ''}>branch</option>
-                    <option value='all' {'selected' if kpi_scope=='all' else ''}>all</option>
-                  </select>
-                </div>
-                <div>
-                  <label>Tháng</label>
-                  <input name='kpi_month' value='{kpi_month}'>
-                </div>
-                <button>Lọc KPI</button>
-              </form>
-            </section>
-
-            <section class='status-tabs'>
-              {tabs_html}
-            </section>
-
-            <section class='panel-grid'>
-              <div class='card' id='create-lead'>
-                <h3>Tạo Lead</h3>
-                <form method='post' action='/app/leads/create'>
-                  <div><label>Branch</label><input name='branch_code' value='{user.get('branch_code') or 'HN'}'></div>
-                  <div><label>Platform</label><input name='platform' value='Facebook'></div>
-                  <div><label>Phone</label><input name='customer_phone'></div>
-                  <div><label>Qualified</label><select name='page_qualified'><option value='0'>0</option><option value='1'>1</option></select></div>
-                  <button>Tạo Lead</button>
-                </form>
-              </div>
-
-              <div class='card'>
-                <h3>Ghi Call Log (Tele)</h3>
-                <form class='wide' method='post' action='/app/calls/create'>
-                  <div><label>Lead ID</label><input name='lead_id'></div>
-                  <div><label>Lần gọi</label><input name='call_no' value='1'></div>
-                  <div><label>Tele</label><input name='tele_owner_code' value='tele01'></div>
-                  <div><label>Status</label><input name='call_status' value='Đã gọi'></div>
-                  <div><label>Result</label><input name='call_result' value='Đặt lịch'></div>
-                  <div><label>Appointment</label><input name='appointment_at' placeholder='2026-04-10T10:00:00'></div>
-                  <button>Ghi Log</button>
-                </form>
-              </div>
-
-              <div class='card' id='invoices'>
-                <h3>Tạo Invoice</h3>
-                <form class='wide' method='post' action='/app/invoices/create'>
-                  <div><label>Branch</label><input name='branch_code' value='{user.get('branch_code') or 'HN'}'></div>
-                  <div><label>Lead ID</label><input name='lead_id'></div>
-                  <div><label>Invoice No</label><input name='invoice_no' placeholder='INV-0001'></div>
-                  <div><label>Seller</label><input name='seller_code' value='tele01'></div>
-                  <div><label>Kết quả TV</label><input name='sale_result' value='Đã mua'></div>
-                  <div><label>DT thực</label><input name='actual_revenue' value='0'></div>
-                  <div><label>DT nợ</label><input name='debt_revenue' value='0'></div>
-                  <button>Tạo Invoice</button>
-                </form>
-              </div>
-
-              <div class='card'>
-                <h3>Tạo Payment</h3>
-                <form class='wide' method='post' action='/app/payments/create'>
-                  <div><label>Branch</label><input name='branch_code' value='{user.get('branch_code') or 'HN'}'></div>
-                  <div><label>Invoice ID</label><input name='invoice_id'></div>
-                  <div><label>Paid Amount</label><input name='paid_amount'></div>
-                  <div><label>Paid At</label><input name='paid_at' placeholder='2026-04-10T10:00:00'></div>
-                  <div><label>Method</label><input name='method' value='Tiền mặt'></div>
-                  <button>Tạo Payment</button>
-                </form>
-              </div>
-
-              <div class='card' id='hoan-khach'>
-                <h3>Tạo yêu cầu Hoàn khách</h3>
-                <form class='wide' method='post' action='/app/hoan-khach/request'>
-                  <div><label>Invoice ID</label><input name='invoice_id'></div>
-                  <div><label>Reason Group</label><input name='reason_group' value='DN từ chối nhận'></div>
-                  <div><label>Reason Detail</label><input name='reason_detail'></div>
-                  <div><label>Evidence URL</label><input name='evidence_url'></div>
-                  <button>Tạo Request</button>
-                </form>
-                  </div>
-
-              <div class='card'>
-                <h3>Duyệt Hoàn khách (Branch Manager/Admin)</h3>
-                <form class='wide' method='post' action='/app/hoan-khach/approve'>
-                  <div><label>Request ID</label><input name='request_id'></div>
-                  <div><label>Decision</label><select name='decision'><option value='approve'>approve</option><option value='reject'>reject</option></select></div>
-                  <div><label>Note</label><input name='decision_note'></div>
-                  <button>Duyệt</button>
-                </form>
-              </div>
-            </section>
-
-            <section class='table-card'>
-              <h3>Danh sách Lead</h3>
-              <div class='table-wrap'>
-                <table>
-                  <tr><th>ID</th><th>Tên KH</th><th>SĐT</th><th>Platform</th><th>Campaign</th><th>Dịch vụ</th><th>Status</th></tr>
-                  {rows}
-                </table>
-              </div>
-            </section>
-
-            <section class='table-card'>
-              <h3>Danh sách Invoice</h3>
-              <div class='table-wrap'>
-                <table>
-                  <tr><th>ID</th><th>Invoice No</th><th>Seller</th><th>Kết quả TV</th><th>DT thực</th><th>DT nợ</th></tr>
-                  {invoice_rows}
-                </table>
-              </div>
-            </section>
-
-            <section class='table-card' id='kpi'>
-              <h3>KPI Monthly</h3>
-              <div class='table-wrap'>
-                <table>
-                  <tr><th>Month</th><th>User</th><th>Team</th><th>Data</th><th>Arrived</th><th>Actual Revenue</th></tr>
-                  {kpi_rows}
-                </table>
-              </div>
-            </section>
-
-            <section class='table-card'>
-              <h3>Hoàn khách requests</h3>
-              <div class='table-wrap'>
-                <table>
-                  <tr><th>ID</th><th>Invoice ID</th><th>Requested by</th><th>Reason Group</th><th>Status</th><th>Approved by</th></tr>
-                  {hoan_rows}
-                </table>
-              </div>
-            </section>
-          </main>
-        </div>
-      </body>
-    </html>
+    content = """
+      <section class='card'>
+        <h3>Tạo yêu cầu Hoàn khách</h3>
+        <form class='grid' method='post' action='/app/hoan-khach/request'>
+          <div><label>Invoice ID</label><input name='invoice_id'></div>
+          <div><label>Reason Group</label><input name='reason_group' value='DN từ chối nhận'></div>
+          <div><label>Reason Detail</label><input name='reason_detail'></div>
+          <div><label>Evidence URL</label><input name='evidence_url'></div>
+          <button class='btn'>Tạo Request</button>
+        </form>
+      </section>
+      <section class='card'>
+        <h3>Duyệt Hoàn khách</h3>
+        <form class='grid' method='post' action='/app/hoan-khach/approve'>
+          <div><label>Request ID</label><input name='request_id'></div>
+          <div><label>Decision</label><select name='decision'><option value='approve'>approve</option><option value='reject'>reject</option></select></div>
+          <div><label>Note</label><input name='decision_note'></div>
+          <button class='btn'>Duyệt</button>
+        </form>
+      </section>
     """
+    content += f"""
+      <section class='table-card'>
+        <h3>Danh sách yêu cầu hoàn khách</h3>
+        <div class='table-wrap'>
+          <table>
+            <tr><th>ID</th><th>Invoice ID</th><th>Requested by</th><th>Reason Group</th><th>Status</th><th>Approved by</th></tr>
+            {hoan_rows}
+          </table>
+        </div>
+      </section>
+    """
+    return render_layout(user, "Hoàn khách", "Quản lý request và duyệt hoàn khách.", "hoan-khach", content)
 
 
 def require_auth(handler: BaseHTTPRequestHandler) -> dict | None:
@@ -1029,7 +1053,7 @@ class Handler(BaseHTTPRequestHandler):
                 set_cookie=build_session_cookie("", max_age=0),
                 location="/app/login",
             )
-        if parsed.path == "/app/leads":
+                    if parsed.path == "/app/leads":
             token = get_cookie_token(self)
             user = get_user_by_token_value(token)
             if not user:
@@ -1068,9 +1092,6 @@ class Handler(BaseHTTPRequestHandler):
                 leads = conn.execute(
                     "SELECT id, customer_name, customer_phone, platform, campaign_name, service_interest, lead_status FROM leads ORDER BY id DESC LIMIT 100"
                 ).fetchall()
-                invoices = conn.execute(
-                    "SELECT id, invoice_no, seller_code, sale_result, actual_revenue, debt_revenue FROM invoices ORDER BY id DESC LIMIT 100"
-                ).fetchall()
                 kpis = conn.execute(
                     f"""
                     SELECT month_key, user_code, team_code, tele_data_count, tele_arrived_count, actual_collected_revenue
@@ -1081,10 +1102,88 @@ class Handler(BaseHTTPRequestHandler):
                     """,
                     args,
                 ).fetchall()
+            return send_html(self, 200, render_leads_page(user, leads, kpis, kpi_scope, kpi_month))
+        if parsed.path == "/app/leads/new":
+            token = get_cookie_token(self)
+            user = get_user_by_token_value(token)
+            if not user:
+                return send_html(self, 302, "", location="/app/login")
+            return send_html(self, 200, render_lead_create_page(user))
+        if parsed.path == "/app/calls":
+            token = get_cookie_token(self)
+            user = get_user_by_token_value(token)
+            if not user:
+                return send_html(self, 302, "", location="/app/login")
+            return send_html(self, 200, render_calls_page(user))
+        if parsed.path == "/app/invoices":
+            token = get_cookie_token(self)
+            user = get_user_by_token_value(token)
+            if not user:
+                return send_html(self, 302, "", location="/app/login")
+            with sqlite3.connect(DB_PATH) as conn:
+                conn.row_factory = sqlite3.Row
+                invoices = conn.execute(
+                    "SELECT id, invoice_no, seller_code, sale_result, actual_revenue, debt_revenue FROM invoices ORDER BY id DESC LIMIT 100"
+                ).fetchall()
+            return send_html(self, 200, render_invoices_page(user, invoices))
+        if parsed.path == "/app/kpi":
+            token = get_cookie_token(self)
+            user = get_user_by_token_value(token)
+            if not user:
+                return send_html(self, 302, "", location="/app/login")
+            qs = parse_qs(parsed.query)
+            kpi_scope = (qs.get("kpi_scope", ["self"])[0] or "self").strip()
+            kpi_month = (qs.get("kpi_month", [datetime.utcnow().strftime("%Y-%m")])[0] or datetime.utcnow().strftime("%Y-%m")).strip()
+
+            where = ["month_key = ?"]
+            args: list = [kpi_month]
+            if kpi_scope == "self":
+                where.append("user_code = ?")
+                args.append(user["user_code"])
+            elif kpi_scope == "team":
+                if user["role_code"] not in ("LEADER", "BRANCH_MANAGER", "ADMIN"):
+                    return send_html(self, 200, "<p>Bạn không có quyền scope team. <a href='/app/kpi'>Quay lại</a></p>")
+                where.append("team_code = ?")
+                args.append(user.get("team_code"))
+                where.append("branch_code = ?")
+                args.append(user.get("branch_code"))
+            elif kpi_scope == "branch":
+                if user["role_code"] not in ("BRANCH_MANAGER", "ADMIN"):
+                    return send_html(self, 200, "<p>Bạn không có quyền scope branch. <a href='/app/kpi'>Quay lại</a></p>")
+                where.append("branch_code = ?")
+                args.append(user.get("branch_code"))
+            elif kpi_scope == "all":
+                if user["role_code"] != "ADMIN":
+                    return send_html(self, 200, "<p>Scope all chỉ dành cho Admin. <a href='/app/kpi'>Quay lại</a></p>")
+            else:
+                kpi_scope = "self"
+                where.append("user_code = ?")
+                args.append(user["user_code"])
+
+            with sqlite3.connect(DB_PATH) as conn:
+                conn.row_factory = sqlite3.Row
+                kpis = conn.execute(
+                    f"""
+                    SELECT month_key, user_code, team_code, tele_data_count, tele_arrived_count, actual_collected_revenue
+                    FROM kpi_monthly_snapshots
+                    WHERE {' AND '.join(where)}
+                    ORDER BY month_key DESC, user_code
+                    LIMIT 100
+                    """,
+                    args,
+                ).fetchall()
+            return send_html(self, 200, render_kpi_page(user, kpis, kpi_scope, kpi_month))
+        if parsed.path == "/app/hoan-khach":
+            token = get_cookie_token(self)
+            user = get_user_by_token_value(token)
+            if not user:
+                return send_html(self, 302, "", location="/app/login")
+            with sqlite3.connect(DB_PATH) as conn:
+                conn.row_factory = sqlite3.Row
                 hoan_requests = conn.execute(
                     "SELECT id, invoice_id, requested_by_code, reason_group, status, approved_by_branch_manager_code FROM hoan_khach_requests ORDER BY id DESC LIMIT 100"
                 ).fetchall()
-            return send_html(self, 200, render_app(user, leads, invoices, kpis, hoan_requests, kpi_scope, kpi_month))
+            return send_html(self, 200, render_hoan_khach_page(user, hoan_requests))
         if parsed.path == "/health":
             return send_json(
                 self,
@@ -1211,7 +1310,7 @@ class Handler(BaseHTTPRequestHandler):
             ip = self.client_address[0] if self.client_address else "unknown"
             if not check_login_rate_limit(user_code, ip):
                 return send_html(self, 429, "<p>Quá nhiều lần đăng nhập sai. Vui lòng thử lại sau 2 phút.</p>")
-            with sqlite3.connect(DB_PATH) as conn:
+                            with sqlite3.connect(DB_PATH) as conn:
                 conn.row_factory = sqlite3.Row
                 user = conn.execute(
                     """
@@ -1266,7 +1365,7 @@ class Handler(BaseHTTPRequestHandler):
             token = get_cookie_token(self)
             user = get_user_by_token_value(token)
             if not user:
-                                return send_html(self, 302, "", location="/app/login")
+                return send_html(self, 302, "", location="/app/login")
             form = parse_form(self)
             if not form.get("lead_id") or not form.get("call_no"):
                 return send_html(self, 200, "<p>Thiếu lead_id hoặc call_no. <a href='/app/leads'>Quay lại</a></p>")
@@ -1583,7 +1682,7 @@ class Handler(BaseHTTPRequestHandler):
                 actor_user_code=user["user_code"],
                 action="lead_reassign",
                 target_type="lead",
-                            target_id=str(lead_id),
+                target_id=str(lead_id),
                 detail={"new_tele_owner_code": new_tele_owner_code},
             )
             return send_json(self, 200, {"ok": True, "lead_id": lead_id, "tele_owner_code": new_tele_owner_code})
