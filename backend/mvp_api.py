@@ -379,7 +379,6 @@ def get_user_by_token(handler: BaseHTTPRequestHandler) -> dict | None:
     user.pop("session_created_at", None)
     return user
 
-
 def get_user_by_token_value(token: str) -> dict | None:
     if not token:
         return None
